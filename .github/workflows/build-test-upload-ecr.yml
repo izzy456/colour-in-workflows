@@ -10,6 +10,10 @@ on:
         description: "Name of the project"
         required: true
         type: string
+      aws-region:
+        description: "AWS region of ECR repo"
+        required: true
+        type: string
     secrets:
       aws-role:
         description: "AWS role to use"
@@ -20,6 +24,12 @@ on:
       build-args:
         description: "Build arguments"
         required: false
+      sonar-host-url:
+        description: "Sonar host"
+        required: true
+      ecr-repo:
+        description: "ECR repo"
+        required: true
 defaults:
   run:
     shell: bash
@@ -72,7 +82,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.sonar-token }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
           INPUT_PROJECTBASEDIR: .
         with:
           args: >
@@ -92,13 +102,13 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.aws-role }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ inputs.aws-region }}
 
       - name: Login to ECR
-        run: aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+        run: aws ecr get-login-password --region ${{ secrets.aws-region }} | docker login --username AWS --password-stdin ${{ secrets.ecr-repo }}
 
       - name: Tag image and upload to ECR
         id: tag_upload
         run: |
-          docker tag "${{ inputs.project-name }}":$GITHUB_SHA ${{ secrets.ECR_REPO }}/"${{ inputs.project-name }}":$GITHUB_SHA
-          docker push ${{ secrets.ECR_REPO }}/"${{ inputs.project-name }}":$GITHUB_SHA
+          docker tag "${{ inputs.project-name }}":$GITHUB_SHA ${{ secrets.ecr-repo }}/"${{ inputs.project-name }}":$GITHUB_SHA
+          docker push ${{ secrets.ecr-repo }}/"${{ inputs.project-name }}":$GITHUB_SHA
