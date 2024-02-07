@@ -44,7 +44,6 @@ jobs:
       - name: Check Inputs
         run: |
           [[ "${{ secrets.build-args }}" =~ \ =\  ]]  && echo "Please do not use space around equals" && false
-          [[ "${{ secrets.build-args }}" =~ [\r\t\n] ]] && echo "Unexpected carriage return, tab or newline character" && false
           [[ "${{ inputs.branch }}" =~ ^(feature|develop|release|main)$ ]] || (echo "Unexpected branch" && false)
 
 
