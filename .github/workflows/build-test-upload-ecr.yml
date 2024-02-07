@@ -24,13 +24,16 @@ defaults:
   run:
     shell: bash
     working-directory: .
+permissions:
+  id-token: write
+  contents: read
 jobs:
   input-check:
     runs-on: ubuntu-latest
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ secrets.build-args }}" =~ \ =\ ]]  && echo "Please do not use space around equals" && false
+          [[ "${{ secrets.build-args }}" =~ \ =\  ]]  && echo "Please do not use space around equals" && false
           [[ "${{ secrets.build-args }}" =~ [\r\t\n] ]] && echo "Unexpected carriage return, tab or newline character" && false
           [[ "${{ inputs.branch }}" =~ ^(feature|develop|release|main)$ ]] && echo "Unexpected branch" && false
 
@@ -83,9 +86,6 @@ jobs:
     if: ${{ contains(fromJSON('["develop"]'), inputs.branch) }}
     needs: [input-check, build, scan]
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
     
     steps:
       - name: Configure AWS credentials
