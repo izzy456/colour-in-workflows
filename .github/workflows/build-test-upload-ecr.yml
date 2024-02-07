@@ -1,0 +1,104 @@
+name: build-test-upload-ecr
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: "Valid branch: feature, develop, release, main"
+        required: true
+        type: string
+      project-name:
+        description: "Name of the project"
+        required: true
+        type: string
+    secrets:
+      aws-role:
+        description: "AWS role to use"
+        required: true
+      sonar-token:
+        description: "Sonar token"
+        required: true
+      build-args:
+        description: "Build arguments"
+        required: false
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+jobs:
+  input-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Inputs
+        run: |
+          [[ "${{ inputs.build-args }}" =~ \ =\ ]]  && echo "Please do not use space around equals"
+          [[ "${{ inputs.build-args }}" =~ [\r\t\n] ]] && echo "Unexpected carriage return, tab or newline character"
+          [[ "${{ inputs.branch }}" =~ ^(feature|develop|release|main)$ ]] && echo "Unexpected branch"
+
+
+  build:
+    if: ${{ contains(fromJSON('["feature", "develop"]'), inputs.branch) }}
+    needs: input-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check Docker image runs tests
+        run: grep -E "pytest|npm run test" Dockerfile || false
+      
+      - name: Build Docker image
+        run: |
+          build_args=""
+          for arg in ${{ secrets.build-args }}
+          do
+            build_args+="--build-arg $arg "
+          done
+          docker build -t "${{ inputs.project-name }}":$GITHUB_SHA $build_args .
+        
+  scan:
+    if: ${{ contains(fromJSON('["feature", "develop"]'), inputs.branch) }}
+    needs: input-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SonarQube Scan
+        id: scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          INPUT_PROJECTBASEDIR: .
+        with:
+          args: >
+            -Dsonar.projectKey="${{ inputs.project-name }}"
+            -Dsonar.sources=.
+            -Dsonar.branch.name=${{ inputs.branch }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=120
+            
+  upload:
+    if: ${{ contains(fromJSON('["develop"]'), inputs.branch) }}
+    needs: [input-check, build, scan]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-role }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        run: aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+
+      - name: Tag image and upload to ECR
+        id: tag_upload
+        run: |
+          docker tag "${{ inputs.project-name }}":$GITHUB_SHA ${{ secrets.ECR_REPO }}/"${{ inputs.project-name }}":$GITHUB_SHA
+          docker push ${{ secrets.ECR_REPO }}/"${{ inputs.project-name }}":$GITHUB_SHA
