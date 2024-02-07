@@ -103,6 +103,15 @@ jobs:
           role-to-assume: ${{ secrets.aws-role }}
           aws-region: ${{ inputs.aws-region }}
 
+      - name: Build Docker image
+        run: |
+          build_args=""
+          for arg in ${{ secrets.build-args }}
+          do
+            build_args+="--build-arg $arg "
+          done
+          docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
+
       - name: Login to ECR
         run: aws ecr get-login-password --region ${{ inputs.aws-region }} | docker login --username AWS --password-stdin ${{ secrets.ecr-repo }}
 
