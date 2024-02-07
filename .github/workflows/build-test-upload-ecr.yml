@@ -69,7 +69,7 @@ jobs:
           do
             build_args+="--build-arg $arg "
           done
-          docker build -t "${{ inputs.project-name }}":$GITHUB_SHA $build_args .
+          docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
         
   scan:
     if: ${{ contains(fromJSON('["feature", "develop"]'), inputs.branch) }}
@@ -86,7 +86,7 @@ jobs:
           INPUT_PROJECTBASEDIR: .
         with:
           args: >
-            -Dsonar.projectKey="${{ inputs.project-name }}"
+            -Dsonar.projectKey=${{ inputs.project-name }}
             -Dsonar.sources=.
             -Dsonar.branch.name=${{ inputs.branch }}
             -Dsonar.qualitygate.wait=true
@@ -110,5 +110,5 @@ jobs:
       - name: Tag image and upload to ECR
         id: tag_upload
         run: |
-          docker tag "${{ inputs.project-name }}":$GITHUB_SHA ${{ secrets.ecr-repo }}/"${{ inputs.project-name }}":$GITHUB_SHA
-          docker push ${{ secrets.ecr-repo }}/"${{ inputs.project-name }}":$GITHUB_SHA
+          docker tag ${{ inputs.project-name }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA
+          docker push ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA
