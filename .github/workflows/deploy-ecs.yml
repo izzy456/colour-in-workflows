@@ -67,7 +67,6 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
 
       - name: Create amd register Task Definition
-        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' || contains(github.ref_name, 'hotfix') }}
         run: |
           aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager | jq ".taskDefinition.containerDefinitions" | grep -o $GITHUB_SHA && echo "Task defintion already exists with this image version" || \
           aws iam get-role --role-name ecsTaskExecutionRole | \
