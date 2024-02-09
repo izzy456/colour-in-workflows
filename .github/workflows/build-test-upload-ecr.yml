@@ -1,9 +1,9 @@
-name: build-test-upload-ecr
+name: Build and test image then upload to ECR
 on:
   workflow_call:
     inputs:
       branch:
-        description: "Valid branch: feature, develop, release, main"
+        description: "Valid branch: feature, develop"
         required: true
         type: string
       project-name:
@@ -14,11 +14,11 @@ on:
         description: "AWS region of ECR repo"
         required: true
         type: string
-      doing-tests:
-        description: "Whether to check for tests"
+      sonar-args:
+        description: "Additional sonar arguments"
         required: false
-        default: true
-        type: boolean
+        type: string
+        default: ""
     secrets:
       aws-role:
         description: "AWS role to use"
@@ -26,44 +26,42 @@ on:
       sonar-token:
         description: "Sonar token"
         required: true
-      build-args:
-        description: "Build arguments"
-        required: false
       sonar-host-url:
         description: "Sonar host"
         required: true
       ecr-repo:
         description: "ECR repo"
         required: true
+      build-args:
+        description: "Build arguments"
+        required: false
 defaults:
   run:
     shell: bash
     working-directory: .
-permissions:
-  id-token: write
-  contents: read
+
 jobs:
   input-check:
     runs-on: ubuntu-latest
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ secrets.build-args }}" =~ \ =\  ]]  && echo "Please do not use space around equals" && false
-          [[ "${{ inputs.branch }}" =~ ^(feature|develop|release|main)$ ]] || (echo "Unexpected branch" && false)
-
+          [[ "${{ secrets.build-args }}" != "" || "${{ secrets.build-args }}" =~ ^[A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com)\
+          (\ [A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com))*$ ]] || \
+          (echo "Unexpected build-args - must be formatted like arg_name=value where value can contain numbers and letters \
+          or be an internal lb url in same region, multiple args must be delimited by a single space" && false)
+          [[ "${{ inputs.branch }}" =~ ^(feature/[A-za-z0-9\_\-]+|develop)$ ]] || (echo "Unexpected branch - must be feature or develop" && false)
 
   build:
-    if: ${{ contains(fromJSON('["feature", "develop"]'), inputs.branch) }}
     needs: input-check
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check Docker image runs tests
-        if: ${{ inputs.doing-tests }}
-        run: grep -E "pytest|npm run test" Dockerfile || false
+        run: grep -E "pytest|npm test" Dockerfile && echo "Confirmed tests are being run in Dockerfile" || echo "Please include test stage in Dockerfile - currently only checking for pytest and npm test"
       
       - name: Build Docker image
         run: |
@@ -75,13 +73,12 @@ jobs:
           docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
         
   scan:
-    if: ${{ contains(fromJSON('["feature", "develop"]'), inputs.branch) }}
     needs: input-check
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -98,15 +95,19 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=120
+            ${{ inputs.sonar-args }}
             
   upload:
     if: ${{ contains(fromJSON('["develop"]'), inputs.branch) }}
     needs: [input-check, build, scan]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
