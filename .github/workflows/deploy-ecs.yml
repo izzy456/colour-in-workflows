@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ inputs.branch }}" =~ ^(develop|main)$ ]] || (echo "Unexpected branch - must be develop or main" && false)
+          [[ "${{ inputs.branch }}" =~ ^(develop|main|hotfix/[A-za-z0-9\_\-]+)$ ]] || (echo "Unexpected branch - must be develop or main or hotfix" && false)
 
   deploy:
     needs: input-check
@@ -67,7 +67,7 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
 
       - name: Create Task Definition
-        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' }}
+        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' || github.ref_name == 'hotfix' }}
         run: |
           aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \

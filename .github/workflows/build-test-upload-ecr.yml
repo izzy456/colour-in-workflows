@@ -50,7 +50,7 @@ jobs:
           (\ [A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com))*$ ]] || \
           (echo "Unexpected build-args - must be formatted like arg_name=value where value can contain numbers and letters \
           or be an internal lb url in same region, multiple args must be delimited by a single space" && false)
-          [[ "${{ inputs.branch }}" =~ ^(feature/[A-za-z0-9\_\-]+|develop)$ ]] || (echo "Unexpected branch - must be feature or develop" && false)
+          [[ "${{ inputs.branch }}" =~ ^(feature/[A-za-z0-9\_\-]+|develop|hotfix/[A-za-z0-9\_\-]+)$ ]] || (echo "Unexpected branch - must be feature or develop or hotfix" && false)
 
   build:
     needs: input-check
@@ -98,7 +98,7 @@ jobs:
             ${{ inputs.sonar-args }}
             
   upload:
-    if: ${{ inputs.branch == 'develop' }}
+    if: ${{ inputs.branch == 'develop' || contains(inputs.branch, 'hotfix') }}
     needs: [input-check, build, scan]
     runs-on: ubuntu-latest
     permissions:
