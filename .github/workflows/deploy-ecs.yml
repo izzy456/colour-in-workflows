@@ -48,6 +48,7 @@ jobs:
           [[ "${{ inputs.branch }}" =~ ^(develop|main)$ ]] || (echo "Unexpected branch - must be develop or main" && false)
 
   deploy:
+    needs: input-check
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -77,6 +78,6 @@ jobs:
         run: |
           aws ecs register-task-definition --cli-input-json file://taskdef_$GITHUB_SHA.json --no-cli-pager | \
           aws ecs update-service --cluster ${{ inputs.cluster-name }} \
-          --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }} }} \
+          --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }} \
           --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }}:$(jq ".taskDefinition.revision") \
           --no-cli-pager
