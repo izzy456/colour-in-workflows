@@ -130,5 +130,6 @@ jobs:
       - name: Tag image and upload to ECR
         id: tag_upload
         run: |
-          docker tag ${{ inputs.project-name }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA
-          docker push ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA
+          aws ecr list-images --repository ${{ inputs.project-name }} | grep -o $GITHUB_SHA && echo "Image already exists skipping upload" || \
+          (docker tag ${{ inputs.project-name }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA && \
+          docker push ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA)
