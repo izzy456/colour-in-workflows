@@ -66,17 +66,17 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
 
       - name: Create Task Definition
-        if: ${{ contains(github.ref_name, 'main') && contains(inputs.task-name, 'prod') || contains(github.ref_name, 'develop') }}
+        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' }}
         run: |
           aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
-          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (contains(github.ref_name, 'main') && 'prod' || 'test') }}|g" taskdef.json \
+          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json \
           > taskdef_$GITHUB_SHA.json
 
       - name: Update Task Definition and Service
         run: |
           aws ecs register-task-definition --cli-input-json file://taskdef_$GITHUB_SHA.json --no-cli-pager | \
           aws ecs update-service --cluster ${{ inputs.cluster-name }} \
-          --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, contains(github.ref_name, 'main') && 'prod' || 'test') }} }} \
+          --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }} }} \
           --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }}:$(jq ".taskDefinition.revision") \
           --no-cli-pager

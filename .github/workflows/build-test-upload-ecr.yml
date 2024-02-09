@@ -98,7 +98,7 @@ jobs:
             ${{ inputs.sonar-args }}
             
   upload:
-    if: ${{ contains(fromJSON('["develop"]'), inputs.branch) }}
+    if: ${{ inputs.branch == 'develop' }}
     needs: [input-check, build, scan]
     runs-on: ubuntu-latest
     permissions:
