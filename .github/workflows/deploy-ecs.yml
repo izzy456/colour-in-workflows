@@ -72,7 +72,7 @@ jobs:
           aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
           -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json \
-          | aws ecs register-task-definition --cli-input-json $(cat) --no-cli-pager
+          | aws ecs register-task-definition --cli-input-json "$(cat)" --no-cli-pager
 
       - name: Update Service
         run: |
