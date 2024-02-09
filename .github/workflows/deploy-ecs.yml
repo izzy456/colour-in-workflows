@@ -68,16 +68,18 @@ jobs:
 
       - name: Create amd register Task Definition
         run: |
-          aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager | jq ".taskDefinition.containerDefinitions" | grep -o $GITHUB_SHA && echo "Task defintion already exists with this image version" || \
-          aws iam get-role --role-name ecsTaskExecutionRole | \
+          aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager | jq ".taskDefinition.containerDefinitions" | grep -o ":$GITHUB_SHA\"" \
+          && echo "Task defintion already exists with this image version" \
+          || aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
           -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json \
           | aws ecs register-task-definition --cli-input-json "$(cat)" --no-cli-pager
 
       - name: Update Service
         run: |
-          aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager | \
+          latest_task_def=$(aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager)
+          echo "$latest_task_def" | jq ".taskDefinition.containerDefinitions" | grep -o ":$GITHUB_SHA\"" && \
           aws ecs update-service --cluster ${{ inputs.cluster-name }} \
           --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }} \
-          --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }}:$(jq ".taskDefinition.revision") \
-          --no-cli-pager
+          --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }}:$(echo "$latest_task_def" | jq ".taskDefinition.revision") \
+          --no-cli-pager || (echo "Task defintion does not exists with this image version" && false)
