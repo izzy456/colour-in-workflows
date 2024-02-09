@@ -72,7 +72,7 @@ jobs:
           aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager | jq ".taskDefinition.containerDefinitions" | grep -o $GITHUB_SHA || \
           aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
-          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json > taskdef_$GITHUB_SHA.json
+          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json > taskdef_$GITHUB_SHA.json \
           | aws ecs register-task-definition --cli-input-json file://taskdef_$GITHUB_SHA.json --no-cli-pager
 
       - name: Update Service
