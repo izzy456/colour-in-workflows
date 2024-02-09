@@ -1,0 +1,82 @@
+name: Deploy image from ECR to ECS
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: "Valid branch: develop, main"
+        required: true
+        type: string
+      project-name:
+        description: "Name of the project"
+        required: true
+        type: string
+      aws-region:
+        description: "AWS region of ECS cluster"
+        required: true
+        type: string
+      cluster-name:
+        description: "Name of the ECS cluster"
+        required: true
+        type: string
+      service-name:
+        description: "Name of the ECS service"
+        required: false
+        type: string
+        default: ""
+      task-name:
+        description: "Name of the ECS task definition"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      aws-role:
+        description: "AWS role to use"
+        required: true
+      ecr-repo:
+        description: "ECR repo"
+        required: true
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+jobs:
+  input-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Inputs
+        run: |
+          [[ "${{ inputs.branch }}" =~ ^(develop|main)$ ]] || (echo "Unexpected branch - must be develop or main" && false)
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Task Definition
+        run: cat taskdef.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-role }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Create Task Definition
+        if: ${{ contains(github.ref_name, 'main') && contains(inputs.task-name, 'prod') || contains(github.ref_name, 'develop') }}
+        run: |
+          aws iam get-role --role-name ecsTaskExecutionRole | \
+          sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
+          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (contains(github.ref_name, 'main') && 'prod' || 'test') }}|g" taskdef.json \
+          > taskdef_$GITHUB_SHA.json
+
+      - name: Update Task Definition and Service
+        run: |
+          aws ecs register-task-definition --cli-input-json file://taskdef_$GITHUB_SHA.json --no-cli-pager | \
+          aws ecs update-service --cluster ${{ inputs.cluster-name }} \
+          --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, contains(github.ref_name, 'main') && 'prod' || 'test') }} }} \
+          --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }}:$(jq ".taskDefinition.revision") \
+          --no-cli-pager
