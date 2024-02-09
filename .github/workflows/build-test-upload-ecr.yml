@@ -46,7 +46,7 @@ jobs:
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ secrets.build-args }}" != "" || "${{ secrets.build-args }}" =~ ^[A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com)\
+          [[ "${{ secrets.build-args }}" == "" || "${{ secrets.build-args }}" =~ ^[A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com)\
           (\ [A-Za-z0-9\_\-]+=([A-Za-z0-9\_\-]+|internal-[A-Za-z0-9\_\-]+\.${{ inputs.aws-region }}\.elb\.amazonaws\.com))*$ ]] || \
           (echo "Unexpected build-args - must be formatted like arg_name=value where value can contain numbers and letters \
           or be an internal lb url in same region, multiple args must be delimited by a single space" && false)
