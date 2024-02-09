@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: "Valid branch: develop, main"
+        description: "Valid branch: develop, main, hotfix"
         required: true
         type: string
       project-name:
@@ -67,7 +67,7 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
 
       - name: Create Task Definition
-        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' || github.ref_name == 'hotfix' }}
+        if: ${{ github.ref_name == 'main' && contains(inputs.task-name, 'prod') || github.ref_name == 'develop' || contains(github.ref_name, 'hotfix') }}
         run: |
           aws iam get-role --role-name ecsTaskExecutionRole | \
           sed -e "s|\"<executionRoleArn>\"|`jq ".Role.Arn"`|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
