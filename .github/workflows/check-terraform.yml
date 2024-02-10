@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: "Valid branch: feature, develop, hotfix"
+        description: "Valid branch: feature, develop or hotfix"
         required: true
         type: string
       project-name:
@@ -18,6 +18,11 @@ on:
         description: "Copy arguments - if need to copy any files/folders into working directory"
         required: false
         type: string
+        default: ""
+      tf-vars:
+        description: "Terraform template arguments"
+        type: string
+        required: false
         default: ""
     secrets:
       aws-role:
@@ -39,7 +44,14 @@ jobs:
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
+          [[ "${{ inputs.tf-vars }}" == "" || "${{ inputs.tf-vars }}" =~ ^[a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+)(\ [a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+))*$ ]] \
+          || (echo -e "Unexpected tf-vars - must be formatted like arg_name=value:\
+          \n\t- arg_name can only contain lowercase letters and underscores\
+          \n\t- value can contain lowercase letters, numbers and  hyphens or be a url\
+          \n\t- multiple args must be delimited by a single space" \
+          && false)
+          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] \
+          || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
 
   check:
     runs-on: ubuntu-latest
@@ -79,7 +91,12 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          terraform plan -var "region=${{ inputs.aws-region }}" | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
+          tf_args=""
+          for arg in ${{ inputs.tf-vars }}
+          do
+            tf_args+="-var $arg "
+          done
+          terraform plan $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
