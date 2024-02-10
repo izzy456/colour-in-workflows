@@ -1,0 +1,95 @@
+name: Check Terraform Templates
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: "Valid branch: feature, develop, hotfix"
+        required: true
+        type: string
+      project-name:
+        description: "Name of the project"
+        required: true
+        type: string
+      aws-region:
+        description: "Default AWS region for infrastructure"
+        required: true
+        type: string
+      copy-args:
+        description: "Copy arguments - if need to copy any files/folders into working directory"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      aws-role:
+        description: "AWS role to use"
+        required: true
+      sonar-token:
+        description: "Sonar token"
+        required: true
+      sonar-host-url:
+        description: "Sonar host"
+        required: true
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+jobs:
+  input-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Inputs
+        run: |
+          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
+
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.project-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-role }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Copy in common templates
+        if: ${{ inputs.copy-args != '' }}
+        run: cp ${{ inputs.copy-args }} .
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init -backend-config="key=${{ inputs.project-name }}" -backend-config="region=${{ inputs.aws-region }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -var "region=${{ inputs.aws-region }}" | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+          INPUT_PROJECTBASEDIR: ./${{ inputs.project-name }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ inputs.project-name }}-terraform
+            -Dsonar.sources=.
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=120
