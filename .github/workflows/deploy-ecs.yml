@@ -46,6 +46,9 @@ jobs:
       - name: Check Inputs
         run: |
           [[ "${{ inputs.branch }}" =~ ^(develop|main|hotfix/[A-za-z0-9\_\-]+)$ ]] || (echo "Unexpected branch - must be develop or main or hotfix" && false)
+          [[ "${{ inputs.project-name }}" == "" ]] && (echo "Project name cannot be empty" && false)
+          [[ "${{ inputs.aws-region }}" == "" ]] && (echo "AWS region cannot be empty" && false)
+          [[ "${{ inputs.cluster-name }}" == "" ]] && (echo "Cluster name cannot be empty" && false)
 
   deploy:
     needs: input-check
@@ -71,7 +74,7 @@ jobs:
           aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager \
           | jq ".taskDefinition.containerDefinitions" | grep -o ":$GITHUB_SHA\"" && echo "Task defintion already exists with this image version" \
           || aws iam get-role --role-name ecsTaskExecutionRole | sed -e "s|\"<executionRoleArn>\"|$(jq ".Role.Arn")|g" -e "s|<image>|${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA|g" \
-          -e "s|<awslogs-region>|${{ vars.AWS_REGION }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json \
+          -e "s|<awslogs-region>|${{ inputs.aws-region }}|g" -e "s|<environment>|${{ (github.ref_name == 'main' && 'prod' || 'test') }}|g" taskdef.json \
           | aws ecs register-task-definition --cli-input-json "$(cat)" --no-cli-pager | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
 
       - name: Update Service

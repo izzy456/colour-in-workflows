@@ -44,14 +44,17 @@ jobs:
     steps:
       - name: Check Inputs
         run: |
+          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] \
+          || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
+          [[ "${{ inputs.project-name }}" == "" ]] && (echo "Project name cannot be empty" && false)
+          [[ "${{ inputs.aws-region }}" == "" ]] && (echo "AWS region cannot be empty" && false)
           [[ "${{ inputs.tf-vars }}" == "" || "${{ inputs.tf-vars }}" =~ ^[a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+)(\ [a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+))*$ ]] \
           || (echo -e "Unexpected tf-vars - must be formatted like arg_name=value:\
           \n\t- arg_name can only contain lowercase letters and underscores\
           \n\t- value can contain lowercase letters, numbers and  hyphens or be a url\
           \n\t- multiple args must be delimited by a single space" \
           && false)
-          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] \
-          || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
+
 
   check:
     needs: input-check
