@@ -1,9 +1,9 @@
-name: Check Terraform Templates
+name: Terraform Drift Check
 on:
   workflow_call:
     inputs:
       branch:
-        description: "Valid branch: feature, develop or hotfix"
+        description: "Valid branch: main"
         required: true
         type: string
       project-name:
@@ -28,12 +28,6 @@ on:
       aws-role:
         description: "AWS role to use"
         required: true
-      sonar-token:
-        description: "Sonar token"
-        required: true
-      sonar-host-url:
-        description: "Sonar host"
-        required: true
 defaults:
   run:
     shell: bash
@@ -50,8 +44,8 @@ jobs:
           \n\t- value can contain lowercase letters, numbers and  hyphens or be a url\
           \n\t- multiple args must be delimited by a single space" \
           && false)
-          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] \
-          || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
+          [[ "${{ inputs.branch }}" == "main" ]] \
+          || (echo "Unexpected branch - must be main" && false)
 
   check:
     needs: input-check
@@ -81,33 +75,12 @@ jobs:
         if: ${{ inputs.copy-args != '' }}
         run: cp ${{ inputs.copy-args }} .
 
-      - name: Terraform Format
-        run: terraform fmt -check
-
-      - name: Terraform Init
-        run: terraform init -backend-config="key=${{ inputs.project-name }}" -backend-config="region=${{ inputs.aws-region }}"
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
+      - name: Drift check
         run: |
           tf_args=""
           for arg in ${{ inputs.tf-vars }}
           do
             tf_args+="-var $arg "
           done
-          terraform plan $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.sonar-token }}
-          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
-          INPUT_PROJECTBASEDIR: ./${{ inputs.project-name }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ inputs.project-name }}-terraform
-            -Dsonar.sources=.
-            -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=120
+          terraform plan $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g | tee /dev/tty \
+          | grep -o "No changes..*Your infrastructure matches the configuration." && echo "No drift detected" || (echo "Drift detected - check logs && false)"
