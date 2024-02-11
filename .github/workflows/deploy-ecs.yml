@@ -72,7 +72,7 @@ jobs:
           role-to-assume: ${{ secrets.aws-role }}
           aws-region: ${{ inputs.aws-region }}
 
-      - name: Create amd register Task Definition
+      - name: Create and register Task Definition
         run: |
           aws ecs describe-task-definition --task-definition ${{ inputs.task-name != '' && inputs.task-name || inputs.project-name }} --no-cli-pager \
           | jq ".taskDefinition.containerDefinitions" | grep -o ":$GITHUB_SHA\"" && echo "Task defintion already exists with this image version" \
