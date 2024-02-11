@@ -55,7 +55,6 @@ jobs:
           \n\t- multiple args must be delimited by a single space" \
           && false)
 
-
   check:
     needs: input-check
     runs-on: ubuntu-latest

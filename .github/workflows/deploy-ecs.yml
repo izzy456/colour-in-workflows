@@ -49,6 +49,7 @@ jobs:
           [[ "${{ inputs.project-name }}" == "" ]] && (echo "Project name cannot be empty" && false)
           [[ "${{ inputs.aws-region }}" == "" ]] && (echo "AWS region cannot be empty" && false)
           [[ "${{ inputs.cluster-name }}" == "" ]] && (echo "Cluster name cannot be empty" && false)
+          true
 
   deploy:
     needs: input-check
