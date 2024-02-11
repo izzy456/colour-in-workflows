@@ -69,6 +69,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
 
       - name: Check Docker image runs tests
         run: |
@@ -85,19 +88,8 @@ jobs:
           [[ "${{ secrets.build-secrets }}" != "" ]] && cat ${{ secrets.build-secrets }} > build_secrets \
           && docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets .
           || docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
-        
-  scan:
-    needs: input-check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: SonarQube Scan
-        id: scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.sonar-token }}
@@ -110,41 +102,13 @@ jobs:
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=120
             ${{ inputs.sonar-args }}
-            
-  upload:
-    if: ${{ !contains(inputs.branch, 'feature') }}
-    needs: [build, scan]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.aws-role }}
-          aws-region: ${{ inputs.aws-region }}
-
-      - name: Build Docker image
-        run: |
-          build_args=""
-          for arg in ${{ inputs.build-args }}
-          do
-            build_args+="--build-arg $arg "
-          done
-          [[ "${{ secrets.build-secrets }}" != "" ]] && cat ${{ secrets.build-secrets }} > build_secrets \
-          && docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets .
-          || docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
 
       - name: Login to ECR
+        if: ${{ !contains(inputs.branch, 'feature') }}
         run: aws ecr get-login-password --region ${{ inputs.aws-region }} | docker login --username AWS --password-stdin ${{ secrets.ecr-repo }}
 
       - name: Tag image and upload to ECR
-        id: tag_upload
+        if: ${{ !contains(inputs.branch, 'feature') }}
         run: |
           aws ecr list-images --repository ${{ inputs.project-name }} | grep -o $GITHUB_SHA && echo "Image already exists skipping upload" \
           || (docker tag ${{ inputs.project-name }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}:$GITHUB_SHA \

@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: "Valid branch: feature, develop or hotfix"
+        description: "Valid branch: main"
         required: true
         type: string
       project-name:
@@ -38,7 +38,7 @@ jobs:
     steps:
       - name: Check Inputs
         run: |
-          [[ "${{ inputs.branch }}" =~ ^(feature\/[A-Za-z0-9\_\-]+|develop|hotfix\/[A-Za-z0-9\_\-]+)$ ]] \
+          [[ "${{ inputs.branch }}" == "main" ]] \
           || (echo "Unexpected branch - must be feature, develop or hotfix" && false)
           [[ "${{ inputs.project-name }}" == "" ]] && (echo "Project name cannot be empty" && false)
           [[ "${{ inputs.aws-region }}" == "" ]] && (echo "AWS region cannot be empty" && false)
@@ -62,7 +62,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: "main"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
