@@ -81,10 +81,11 @@ jobs:
         run: terraform init -backend-config="key=${{ inputs.project-name }}" -backend-config="region=${{ inputs.aws-region }}"
 
       - name: Terraform Apply
+        timeout-minutes: 60
         run: |
           tf_args=""
           for arg in ${{ inputs.tf-vars }}
           do
             tf_args+="-var $arg "
           done
-          terraform apply $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
+          terraform apply -auto-approve $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
