@@ -42,10 +42,10 @@ jobs:
           || (echo "Unexpected branch - must be main" && false)
           [[ "${{ inputs.project-name }}" == "" ]] && (echo "Project name cannot be empty" && false)
           [[ "${{ inputs.aws-region }}" == "" ]] && (echo "AWS region cannot be empty" && false)
-          [[ "${{ inputs.tf-vars }}" == "" || "${{ inputs.tf-vars }}" =~ ^[a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+)(\ [a-z\_]+=([a-z0-9\-]+|https?:\/\/[a-z0-9\.\-\\\?\=\&]+))*$ ]] \
+          [[ "${{ inputs.tf-vars }}" == "" || "${{ inputs.tf-vars }}" =~ ^[a-z\_]+=([a-z0-9\-]+|[a-z0-9\-]+\.(app|com))(\ [a-z\_]+=([a-z0-9\-]+|[a-z0-9\-]+\.(app|com)))*$ ]] \
           || (echo -e "Unexpected tf-vars - must be formatted like arg_name=value:\
           \n\t- arg_name can only contain lowercase letters and underscores\
-          \n\t- value can contain lowercase letters, numbers and  hyphens or be a url\
+          \n\t- value can contain lowercase letters, numbers and hyphens or be a root domain like colourin.app (only accepts app or com)\
           \n\t- multiple args must be delimited by a single space" \
           && false)
 
