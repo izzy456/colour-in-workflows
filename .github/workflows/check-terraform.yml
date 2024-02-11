@@ -108,8 +108,8 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.sonar-token }}
           SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
-          INPUT_PROJECTBASEDIR: ./${{ inputs.project-name }}
         with:
+          projectBaseDir: ./${{ inputs.project-name }}
           args: >
             -Dsonar.projectKey=${{ inputs.project-name }}-terraform
             -Dsonar.sources=.

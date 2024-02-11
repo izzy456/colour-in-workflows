@@ -96,8 +96,8 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.sonar-token }}
           SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
-          INPUT_PROJECTBASEDIR: .
         with:
+          projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ inputs.project-name }}
             -Dsonar.sources=.
