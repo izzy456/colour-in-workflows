@@ -88,7 +88,7 @@ jobs:
             build_args+="--build-arg $arg "
           done
           [[ "${{ secrets.build-secrets }}" != "" ]] && cat ${{ secrets.build-secrets }} > build_secrets \
-          && docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets .
+          && docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets . \
           || docker build -t ${{ inputs.project-name }}:$GITHUB_SHA $build_args .
 
       - name: SonarQube Scan
