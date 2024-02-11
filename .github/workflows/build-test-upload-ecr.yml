@@ -105,6 +105,12 @@ jobs:
             -Dsonar.qualitygate.timeout=120
             ${{ inputs.sonar-args }}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-role }}
+          aws-region: ${{ inputs.aws-region }}
+
       - name: Login to ECR
         if: ${{ !contains(inputs.branch, 'feature') }}
         run: aws ecr get-login-password --region ${{ inputs.aws-region }} | docker login --username AWS --password-stdin ${{ secrets.ecr-repo }}
