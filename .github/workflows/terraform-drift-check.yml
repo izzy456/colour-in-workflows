@@ -77,6 +77,9 @@ jobs:
         if: ${{ inputs.copy-args != '' }}
         run: cp ${{ inputs.copy-args }} .
 
+      - name: Terraform Init
+        run: terraform init -backend-config="key=${{ inputs.project-name }}" -backend-config="region=${{ inputs.aws-region }}"
+
       - name: Drift check
         run: |
           tf_args=""
