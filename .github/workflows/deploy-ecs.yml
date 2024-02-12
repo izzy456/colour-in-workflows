@@ -88,4 +88,4 @@ jobs:
           --service ${{ inputs.service-name != '' && inputs.service-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }} \
           --task-definition ${{ inputs.task-name != '' && inputs.task-name || format('{0}-{1}', inputs.project-name, github.ref_name == 'main' && 'prod' || 'test') }}:$(echo "$latest_task_def" | jq ".taskDefinition.revision") \
           --no-cli-pager | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g" \
-          || (echo "Task defintion does not exists with this image version" && false)
+          || (echo "Task definition does not exist with this image version" && false)
