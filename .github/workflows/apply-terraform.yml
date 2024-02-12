@@ -88,4 +88,5 @@ jobs:
           do
             tf_args+="-var $arg "
           done
-          terraform apply -auto-approve $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g"
+          terraform apply -auto-approve $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g" \
+          | tee /dev/tty | grep -o "Apply complete\!" && echo "Apply completed" || (echo "Apply failed - check logs" && false)
