@@ -88,8 +88,8 @@ jobs:
             build_args+="--build-arg $arg "
           done
           [[ "${{ secrets.build-secrets }}" != "" ]] && echo ${{ secrets.build-secrets }} > build_secrets \
-          && docker build -t ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets . \
-          || docker build -t ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }}:$GITHUB_SHA $build_args .
+          && docker build -t ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }}:$GITHUB_SHA $build_args --secret id=build_secrets,src=./build_secrets . \
+          || docker build -t ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }}:$GITHUB_SHA $build_args .
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -118,6 +118,6 @@ jobs:
       - name: Tag image and upload to ECR
         if: ${{ !contains(inputs.branch, 'feature') }}
         run: |
-          aws ecr list-images --repository ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }} | grep -o $GITHUB_SHA && echo "Image already exists skipping upload" \
-          || (docker tag ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }}:$GITHUB_SHA \
-          && docker push ${{ secrets.ecr-repo }}/${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' }}:$GITHUB_SHA)
+          aws ecr list-images --repository ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }} | grep -o $GITHUB_SHA && echo "Image already exists skipping upload" \
+          || (docker tag ${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }}:$GITHUB_SHA ${{ secrets.ecr-repo }}/${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }}:$GITHUB_SHA \
+          && docker push ${{ secrets.ecr-repo }}/${{ inputs.project-name }}${{ github.ref_name != 'main' && '-test' || '' }}:$GITHUB_SHA)
