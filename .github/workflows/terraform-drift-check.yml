@@ -87,5 +87,5 @@ jobs:
           do
             tf_args+="-var $arg "
           done
-          terraform plan $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g | tee /dev/tty \
+          terraform plan $tf_args | sed -e "s|$(echo ${{ secrets.aws-role }} | grep -o "[0-9]\+")|<awsAccountId>|g" | tee /dev/tty \
           | grep -o "No changes..*Your infrastructure matches the configuration." && echo "No drift detected" || (echo "Drift detected - check logs" && false)
